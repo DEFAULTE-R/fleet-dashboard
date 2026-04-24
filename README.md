@@ -34,3 +34,6 @@ A real-time monitoring system for industrial devices built using FastAPI, SQLite
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+## 🌐 Live Demo
+https://fleet-dashboard-hc0y.onrender.com/
