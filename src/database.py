@@ -79,6 +79,15 @@ def insert_metrics(device_id: str, data: dict):
             VALUES (?, 'ERROR_SPIKE', 'High error count')
             """, (device_id,))
 
+def compute_health(temp, cpu, errors):
+    score = 100
+
+    score -= max(0, temp - 50) * 0.8
+    score -= max(0, cpu - 60) * 0.5
+    score -= errors * 2
+
+    return max(0, min(100, round(score, 1)))
+
 def get_all_devices():
     with get_conn() as conn:
         rows = conn.execute("""
@@ -97,9 +106,15 @@ def get_all_devices():
             if not r["temperature_c"]:
                 continue
 
-            if r["temperature_c"] > 85 or r["error_count"] > 10:
+            health = compute_health(
+                r["temperature_c"],
+                r["cpu_usage"],
+                r["error_count"]
+            )
+
+            if health < 40:
                 status = "error"
-            elif r["temperature_c"] > 70:
+            elif health < 70:
                 status = "warning"
             else:
                 status = "healthy"
@@ -110,6 +125,7 @@ def get_all_devices():
                 "cpu_usage": r["cpu_usage"],
                 "memory_usage": r["memory_usage"],
                 "error_count": r["error_count"],
+                "health": health,
                 "status": status
             })
 

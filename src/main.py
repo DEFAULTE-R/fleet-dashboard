@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import sqlite3
+
 import src.database as db
+from src.database import DB_PATH
 from src.models import SensorData
 
 app = FastAPI(title="Fleet Dashboard")
@@ -21,7 +24,7 @@ def index():
 def post_metrics(device_id: str, data: SensorData):
     db.upsert_device(device_id)
     db.insert_metrics(device_id, data.model_dump())
-    return {"ok": True, "device_id": device_id}
+    return {"ok": True}
 
 @app.get("/api/fleet/status")
 def fleet_status():
@@ -36,9 +39,18 @@ def fleet_status():
 
 @app.get("/api/devices/{device_id}/metrics")
 def device_metrics(device_id: str):
-    metrics = db.get_device_metrics(device_id)
-    return {"device_id": device_id, "metrics": metrics}
+    return {"metrics": db.get_device_metrics(device_id)}
 
 @app.get("/api/alerts")
 def alerts():
     return {"alerts": db.get_alerts()}
+
+@app.post("/api/alerts/{alert_id}/resolve")
+def resolve_alert(alert_id: int):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "UPDATE alerts SET resolved = 1 WHERE id = ?",
+            (alert_id,)
+        )
+        conn.commit()
+    return {"ok": True}
